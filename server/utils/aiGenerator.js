@@ -12,6 +12,7 @@ class SQLPrepAIGenerator {
     try {
       this.genAI = new GoogleGenerativeAI(apiKey);
       this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      this.lastGeneratedResponse = null; // Store last response
       console.log("✅ Gemini AI Initialized Successfully!");
     } catch (error) {
       console.error("❌ Failed to initialize Gemini AI:", error);
@@ -29,19 +30,28 @@ class SQLPrepAIGenerator {
       const result = await this.model.generateContent(prompt);
       console.log("📩 Raw API Response:", result);
 
-      if (!result || !result.response || !result.response.text) {
+      if (!result || !result.response) {
         throw new Error("❌ Invalid API response. Response is missing.");
       }
 
       const aiResponse = result.response.text();
       console.log("\n📜 AI Response Text:\n", aiResponse);
+      
+      // Store the raw text response
+      this.lastGeneratedResponse = aiResponse;
 
       if (!aiResponse || aiResponse.trim().length === 0) {
         throw new Error("❌ Received empty response from Gemini AI.");
       }
 
       const parsedPlan = this.parseAIPlan(aiResponse);
-      return parsedPlan.length > 0 ? parsedPlan : this.getDefaultQuestions();
+      
+      if (parsedPlan.length === 0) {
+        console.warn("⚠️ Failed to parse AI response, using default questions");
+        return this.getDefaultQuestions();
+      }
+      
+      return parsedPlan;
       
     } catch (error) {
       console.error("🚨 Detailed AI Generation Error:", {
@@ -73,31 +83,27 @@ class SQLPrepAIGenerator {
     Title: [Descriptive Title]
     Difficulty: [Easy/Medium/Hard]
     Concepts: [Comma-separated SQL concepts]
-    Description: [Detailed problem description with context]
-
-    Important: 
-    - Ensure diversity in question types
-    - Cover advanced SQL topics
-    - Reflect real-world data engineering challenges
-    - Provide clear, actionable questions`;
+    Description: [Detailed problem description with context]`;
   }
 
   parseAIPlan(aiResponse) {
-    const questionRegex = /Title:\s*(.+?)\nDifficulty:\s*(\w+)\nConcepts:\s*(.+?)\nDescription:\s*(.+?)(?=\nTitle:|\n*$)/gs;
+    console.log("Attempting to parse AI response");
     const questions = [];
+    const markdownRegex = /\*\*(\d+)\.\s*Title:\*\*\s*(.*?)\s*\*\*Difficulty:\*\*\s*(.*?)\s*\*\*Concepts:\*\*\s*(.*?)\s*\*\*Description:\*\*\s*(.*?)(?=\*\*\d+\.|$)/gs;
+    
     let match;
-
-    while ((match = questionRegex.exec(aiResponse)) !== null) {
+    while ((match = markdownRegex.exec(aiResponse)) !== null) {
       questions.push({
-        title: match[1].trim(),
-        difficulty: match[2].trim(),
-        concepts: match[3].trim().split(",").map((c) => c.trim()),
-        description: match[4].trim(),
+        title: match[2].trim(),
+        difficulty: match[3].trim(),
+        concepts: match[4].split(',').map(c => c.trim()),
+        description: match[5].trim(),
         category: "Problem Solving",
-        completed: false,
+        completed: false
       });
     }
-
+    
+    console.log(`Found ${questions.length} questions using markdown regex`);
     return questions;
   }
 

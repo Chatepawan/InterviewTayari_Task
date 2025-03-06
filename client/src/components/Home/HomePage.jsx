@@ -3,8 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const HomePage = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const features = [
     { title: "Personalized SQL Prep", description: "Tailored SQL interview plans for your target companies.", icon: "🎯" },
@@ -22,6 +27,9 @@ const HomePage = () => {
               <span className="text-gray-700">Hi, {user?.name}</span>
               <button onClick={() => navigate('/sql-prep-kit')} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
                 My SQL Kit
+              </button>
+              <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                Logout
               </button>
             </div>
           ) : (

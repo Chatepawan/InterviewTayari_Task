@@ -1,4 +1,3 @@
-// server/models/SQLPrepPlan.js
 const mongoose = require('mongoose');
 
 const SQLPrepPlanSchema = new mongoose.Schema({
@@ -23,6 +22,8 @@ const SQLPrepPlanSchema = new mongoose.Schema({
   questions: [{
     title: String,
     difficulty: String,
+    concepts: [String], // Added field
+    description: String, // Added field
     category: String,
     completed: {
       type: Boolean,

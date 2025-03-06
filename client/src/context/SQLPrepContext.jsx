@@ -29,12 +29,16 @@ export const SQLPrepProvider = ({ children }) => {
       );
 
       console.log('Generated Plan:', response.data);
-      setSQLPrepPlan({
+      
+      // Store both the structured data and the raw response
+      const planData = {
         questions: response.data.questions || [],
         metadata: response.data.metadata || {},
-      });
-
-      return response.data;
+        rawPlan: response.data.aiResponse || response.data.plan || response.data
+      };
+      
+      setSQLPrepPlan(planData);
+      return planData;
     } catch (err) {
       console.error('Error generating plan:', err);
       setError(err.response?.data?.message || 'Failed to generate plan');
@@ -53,6 +57,7 @@ export const SQLPrepProvider = ({ children }) => {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
 
+      console.log('Fetched saved plan:', response.data);
       setSQLPrepPlan(response.data);
       return response.data;
     } catch (err) {
@@ -69,12 +74,16 @@ export const SQLPrepProvider = ({ children }) => {
     setError(null);
     try {
       // Optimistically update state
-      setSQLPrepPlan(prev => ({
-        ...prev,
-        questions: prev?.questions?.map(q =>
-          q._id === questionId ? { ...q, completed } : q
-        ) || [],
-      }));
+      setSQLPrepPlan(prev => {
+        if (!prev || !prev.questions) return prev;
+        
+        return {
+          ...prev,
+          questions: prev.questions.map(q =>
+            q._id === questionId ? { ...q, completed } : q
+          )
+        };
+      });
 
       const response = await axios.patch(
         `${BASE_URL}/update-progress`,
@@ -90,12 +99,18 @@ export const SQLPrepProvider = ({ children }) => {
     }
   };
 
+  // Clear the current plan
+  const clearPlan = () => {
+    setSQLPrepPlan(null);
+  };
+
   return (
     <SQLPrepContext.Provider value={{ 
       sqlPrepPlan, 
       generatePlan, 
       fetchSavedPlan, 
-      updateQuestionProgress, 
+      updateQuestionProgress,
+      clearPlan,
       loading, 
       error 
     }}>
